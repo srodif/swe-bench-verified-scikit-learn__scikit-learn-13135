@@ -203,6 +203,30 @@ def test_nonuniform_strategies(strategy, expected_2bins, expected_3bins):
     assert_array_equal(expected_3bins, Xt.ravel())
 
 
+def test_kmeans_sorted_bins():
+    """Test that kmeans strategy produces sorted bin_edges even with more bins.
+    
+    This is a regression test for the issue where kmeans strategy could fail
+    due to unsorted bin_edges causing np.digitize to raise ValueError.
+    """
+    X = np.array([0, 0.5, 2, 3, 9, 10]).reshape(-1, 1)
+    
+    # Test with 5 bins - this was causing the original error
+    est = KBinsDiscretizer(n_bins=5, strategy='kmeans', encode='ordinal')
+    # This should not raise ValueError
+    Xt = est.fit_transform(X)
+    
+    # Check that bin_edges are properly sorted
+    bin_edges = est.bin_edges_[0]
+    assert_array_equal(bin_edges, np.sort(bin_edges)), \
+        "bin_edges should be sorted for kmeans strategy"
+    
+    # Check that transform works correctly
+    assert Xt.shape == X.shape
+    assert np.all(Xt >= 0)
+    assert np.all(Xt < 5)  # Should be in range [0, n_bins)
+
+
 @pytest.mark.parametrize('strategy', ['uniform', 'kmeans', 'quantile'])
 @pytest.mark.parametrize('encode', ['ordinal', 'onehot', 'onehot-dense'])
 def test_inverse_transform(strategy, encode):
